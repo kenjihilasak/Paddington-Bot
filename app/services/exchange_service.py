@@ -10,6 +10,7 @@ from app.core.config import Settings
 from app.db.models import ExchangeOffer, RecordStatus
 from app.db.repositories import ExchangeOfferRepository, UserRepository
 from app.schemas.exchange_offer import ExchangeOfferCreate
+from app.services.exceptions import ResourceNotFoundError
 
 
 class ExchangeService:
@@ -26,7 +27,7 @@ class ExchangeService:
 
         user = await self.user_repository.get_by_id(payload.user_id)
         if user is None:
-            raise ValueError("User not found.")
+            raise ResourceNotFoundError("User not found.")
 
         offer = ExchangeOffer(
             user_id=payload.user_id,
@@ -85,4 +86,3 @@ class ExchangeService:
             limit=limit or self.settings.default_summary_limit,
             offset=0,
         )
-

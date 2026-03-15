@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models import RecordStatus
 
@@ -21,6 +22,31 @@ class ExchangeOfferCreate(BaseModel):
     notes: str | None = None
     status: RecordStatus = RecordStatus.ACTIVE
     expires_at: datetime | None = None
+
+    @field_validator("offer_currency", "want_currency")
+    @classmethod
+    def validate_currency(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if not re.fullmatch(r"[A-Z]{3,8}", normalized):
+            raise ValueError("Currency codes must contain 3 to 8 letters.")
+        return normalized
+
+    @field_validator("location", "notes")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("expires_at")
+    @classmethod
+    def normalize_expires_at(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
 
 class ExchangeOfferRead(BaseModel):
@@ -38,4 +64,3 @@ class ExchangeOfferRead(BaseModel):
     status: RecordStatus
     created_at: datetime
     expires_at: datetime | None
-

@@ -66,3 +66,18 @@ def test_exchange_offer_filters(client, create_user) -> None:
     assert response.status_code == 200
     assert len(response.json()) == 1
 
+
+def test_create_exchange_offer_returns_404_for_unknown_user(client) -> None:
+    response = client.post(
+        "/api/exchange-offers",
+        json={
+            "user_id": 999999,
+            "offer_currency": "PEN",
+            "want_currency": "GBP",
+            "amount": "300",
+            "location": "Leeds city centre",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "User not found."}

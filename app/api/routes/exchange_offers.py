@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_exchange_service
 from app.db.models import RecordStatus
 from app.schemas.exchange_offer import ExchangeOfferCreate, ExchangeOfferRead
 from app.services.exchange_service import ExchangeService
+from app.services.exceptions import ResourceNotFoundError
 
 
 router = APIRouter(prefix="/api/exchange-offers", tags=["exchange-offers"])
@@ -41,6 +42,8 @@ async def create_exchange_offer(
     payload: ExchangeOfferCreate,
     service: ExchangeService = Depends(get_exchange_service),
 ) -> ExchangeOfferRead:
-    offer = await service.create_offer(payload)
+    try:
+        offer = await service.create_offer(payload)
+    except ResourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ExchangeOfferRead.model_validate(offer)
-

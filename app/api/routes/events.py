@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_event_service
 from app.db.models import RecordStatus
 from app.schemas.event import CommunityEventCreate, CommunityEventRead
+from app.services.exceptions import ResourceNotFoundError
 from app.services.event_service import EventService
 
 
@@ -37,6 +38,8 @@ async def create_event(
     payload: CommunityEventCreate,
     service: EventService = Depends(get_event_service),
 ) -> CommunityEventRead:
-    event = await service.create_event(payload)
+    try:
+        event = await service.create_event(payload)
+    except ResourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return CommunityEventRead.model_validate(event)
-

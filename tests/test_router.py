@@ -72,3 +72,31 @@ async def test_router_asks_follow_up_for_incomplete_listing(session_maker, fake_
         assert saved_state is not None
         assert saved_state.current_flow.value == "listing_create"
 
+
+@pytest.mark.asyncio
+async def test_router_handles_simple_sell_command(session_maker, fake_redis) -> None:
+    async with session_maker() as session:
+        user = User(wa_id="447700900126", display_name="Kenji")
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+        settings = get_settings()
+        state_service = ConversationStateService(fake_redis, session, settings)
+        router = MessageRouter(
+            settings=settings,
+            conversation_state_service=state_service,
+            exchange_service=ExchangeService(session, settings),
+            listing_service=ListingService(session, settings),
+            event_service=EventService(session),
+            summary_service=SummaryService(session, settings),
+            llm_provider=None,
+        )
+
+        result = await router.route_message(user=user, message_text="sell")
+        saved_state = await state_service.get_state(user.id)
+
+        assert result.intent.value == "create_listing"
+        assert "what item" in result.reply_text.lower()
+        assert saved_state is not None
+        assert saved_state.current_flow.value == "listing_create"

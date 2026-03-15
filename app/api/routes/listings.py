@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_listing_service
 from app.db.models import ListingCategory, RecordStatus
 from app.schemas.listing import ListingCreate, ListingRead
+from app.services.exceptions import ResourceNotFoundError
 from app.services.listing_service import ListingService
 
 
@@ -41,6 +42,8 @@ async def create_listing(
     payload: ListingCreate,
     service: ListingService = Depends(get_listing_service),
 ) -> ListingRead:
-    listing = await service.create_listing(payload)
+    try:
+        listing = await service.create_listing(payload)
+    except ResourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ListingRead.model_validate(listing)
-

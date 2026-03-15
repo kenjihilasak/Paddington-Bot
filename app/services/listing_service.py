@@ -10,6 +10,7 @@ from app.core.config import Settings
 from app.db.models import Listing, ListingCategory, RecordStatus
 from app.db.repositories import ListingRepository, UserRepository
 from app.schemas.listing import ListingCreate
+from app.services.exceptions import ResourceNotFoundError
 
 
 class ListingService:
@@ -26,7 +27,7 @@ class ListingService:
 
         user = await self.user_repository.get_by_id(payload.user_id)
         if user is None:
-            raise ValueError("User not found.")
+            raise ResourceNotFoundError("User not found.")
 
         listing = Listing(
             user_id=payload.user_id,
@@ -67,4 +68,3 @@ class ListingService:
             limit=limit,
             offset=offset,
         )
-

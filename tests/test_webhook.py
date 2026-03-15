@@ -60,3 +60,32 @@ def test_receive_meta_webhook_stores_messages(client, session_maker) -> None:
     users, messages = asyncio.run(inspect())
     assert users == 1
     assert messages == 2
+
+
+def test_receive_meta_webhook_ignores_empty_text_messages(client) -> None:
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "contacts": [{"profile": {"name": "Kenji"}}],
+                            "messages": [
+                                {
+                                    "from": "447700900125",
+                                    "id": "wamid.test",
+                                    "timestamp": "1741975200",
+                                    "type": "text",
+                                    "text": {"body": "   "},
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    response = client.post("/webhook/meta", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {"status": "accepted", "processed_messages": 0}

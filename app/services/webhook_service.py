@@ -74,15 +74,20 @@ class WebhookService:
                     if message.get("type") != "text":
                         logger.info("Ignoring unsupported inbound message type: %s", message.get("type"))
                         continue
+                    wa_id = (message.get("from") or "").strip()
+                    text_body = (message.get("text", {}).get("body") or "").strip()
+                    if not wa_id or not text_body:
+                        logger.info("Ignoring inbound message without sender id or text body.")
+                        continue
                     raw_timestamp = message.get("timestamp")
                     timestamp = datetime.now(timezone.utc)
                     if raw_timestamp and str(raw_timestamp).isdigit():
                         timestamp = datetime.fromtimestamp(int(raw_timestamp), tz=timezone.utc)
                     results.append(
                         NormalizedInboundMessage(
-                            wa_id=message.get("from", ""),
+                            wa_id=wa_id,
                             display_name=contact_name,
-                            text=message.get("text", {}).get("body", ""),
+                            text=text_body,
                             timestamp=timestamp,
                             raw_payload=payload,
                             message_id=message.get("id"),
@@ -126,4 +131,3 @@ class WebhookService:
             },
         )
         await self.session.commit()
-

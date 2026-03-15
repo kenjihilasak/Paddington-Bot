@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import CommunityEvent, RecordStatus
 from app.db.repositories import CommunityEventRepository, UserRepository
 from app.schemas.event import CommunityEventCreate
+from app.services.exceptions import ResourceNotFoundError
 
 
 class EventService:
@@ -22,7 +23,7 @@ class EventService:
 
         user = await self.user_repository.get_by_id(payload.user_id)
         if user is None:
-            raise ValueError("User not found.")
+            raise ResourceNotFoundError("User not found.")
 
         event = CommunityEvent(
             user_id=payload.user_id,

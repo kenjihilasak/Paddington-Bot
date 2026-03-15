@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -63,7 +64,7 @@ class OpenAICompatibleProvider(LLMProvider):
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": str(user_payload)},
+                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
             ],
         }
         response = await self.http_client.post(

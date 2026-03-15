@@ -14,7 +14,7 @@ import dateparser
 from app.core.config import Settings
 from app.db.models import ConversationFlow, ListingCategory, User
 from app.llm.base import LLMProvider
-from app.schemas.bot import BotRouteResult, ExtractionResult, IntentResult, IntentType
+from app.schemas.bot import BotRouteResult, IntentResult, IntentType
 from app.schemas.event import CommunityEventCreate
 from app.schemas.exchange_offer import ExchangeOfferCreate
 from app.schemas.listing import ListingCreate
@@ -60,6 +60,7 @@ LISTING_CREATE_MARKERS = ("i'm selling", "i am selling", "selling", "for sale")
 LISTING_SEARCH_MARKERS = ("show me listings", "find listings", "search listings", "browse listings")
 EVENT_KEYWORDS = ("event", "match", "meetup", "meeting", "workshop", "football")
 DAY_KEYWORDS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+SELL_COMMANDS = ("sell", "selling")
 
 
 class MessageRouter:
@@ -150,6 +151,8 @@ class MessageRouter:
             return IntentResult(intent=IntentType.HELP_MENU, confidence=0.99)
         if any(keyword in normalized for keyword in SUMMARY_KEYWORDS):
             return IntentResult(intent=IntentType.SUMMARY, confidence=0.95)
+        if normalized in SELL_COMMANDS or normalized.startswith("sell "):
+            return IntentResult(intent=IntentType.CREATE_LISTING, confidence=0.95)
         if any(marker in normalized for marker in LISTING_CREATE_MARKERS):
             return IntentResult(intent=IntentType.CREATE_LISTING, confidence=0.9)
         if any(marker in normalized for marker in LISTING_SEARCH_MARKERS):
@@ -473,24 +476,34 @@ class MessageRouter:
         if in_match:
             return in_match.group(1).strip(" .,!?")
         at_match = re.search(r"\bat\s+([A-Za-z][A-Za-z\s'-]{1,80})", message_text, re.IGNORECASE)
-        if at_match:
+        if at_match and not any(character.isdigit() for character in at_match.group(1)):
             return at_match.group(1).strip(" .,!?")
         return None
 
     def _parse_event_date(self, message_text: str) -> datetime | None:
         timezone_name = self.settings.business_timezone
-        parsed = dateparser.parse(
+        candidate_fragments: list[str] = []
+        fragment_match = re.search(
+            r"\b(?:on|at)\s+(.+?)(?:\s+in\s+[A-Za-z][A-Za-z\s'-]{1,80})?$",
             message_text,
-            settings={
-                "TIMEZONE": timezone_name,
-                "TO_TIMEZONE": timezone_name,
-                "RETURN_AS_TIMEZONE_AWARE": True,
-                "PREFER_DATES_FROM": "future",
-            },
+            re.IGNORECASE,
         )
-        if parsed is None:
-            return None
-        return parsed.astimezone(ZoneInfo("UTC"))
+        if fragment_match:
+            candidate_fragments.append(fragment_match.group(1).strip(" .,!?"))
+        candidate_fragments.append(message_text)
+
+        parser_settings = {
+            "TIMEZONE": timezone_name,
+            "TO_TIMEZONE": timezone_name,
+            "RETURN_AS_TIMEZONE_AWARE": True,
+            "PREFER_DATES_FROM": "future",
+        }
+
+        for candidate in candidate_fragments:
+            parsed = dateparser.parse(candidate, settings=parser_settings)
+            if parsed is not None:
+                return parsed.astimezone(ZoneInfo("UTC"))
+        return None
 
     @staticmethod
     def _safe_decimal(value: str | None) -> Decimal | None:
