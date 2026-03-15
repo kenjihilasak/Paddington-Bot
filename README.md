@@ -44,6 +44,10 @@ docker-compose.yml
 requirements.txt
 ```
 
+## Internal documentation
+
+Technical notes for the backend live in [`docs/`](./docs/index.md).
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and update the values:
