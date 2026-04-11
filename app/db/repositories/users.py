@@ -21,13 +21,13 @@ class UserRepository:
         result = await self.session.execute(select(User).where(User.wa_id == wa_id))
         return result.scalar_one_or_none()
 
-    async def upsert_whatsapp_user(self, wa_id: str, display_name: str | None = None) -> User:
+    async def upsert_whatsapp_user(self, wa_id: str, wa_profile_name: str | None = None) -> User:
         user = await self.get_by_wa_id(wa_id)
         if user is None:
-            user = User(wa_id=wa_id, display_name=display_name)
+            user = User(wa_id=wa_id, wa_profile_name=wa_profile_name)
             self.session.add(user)
-        elif display_name:
-            user.display_name = display_name
+        elif wa_profile_name:
+            user.wa_profile_name = wa_profile_name
         await self.session.flush()
         return user
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from app.api.deps import get_webhook_service
 from app.schemas.webhook import MetaWebhookProcessResponse
+from app.services.webhook_task_coordinator import WebhookTaskCoordinator
 from app.services.webhook_service import WebhookService
 
 
@@ -33,10 +34,15 @@ async def verify_meta_webhook(
 @router.post("", response_model=MetaWebhookProcessResponse)
 async def receive_meta_webhook(
     payload: dict[str, Any],
+    request: Request,
     service: WebhookService = Depends(get_webhook_service),
 ) -> MetaWebhookProcessResponse:
     """Process inbound Meta webhook payloads."""
 
-    processed = await service.handle_meta_webhook(payload)
+    task_coordinator: WebhookTaskCoordinator = request.app.state.webhook_task_coordinator
+    processed = await service.handle_meta_webhook(
+        payload,
+        on_messages_queued=task_coordinator.schedule_user_drain,
+    )
     return MetaWebhookProcessResponse(status="accepted", processed_messages=processed)
 

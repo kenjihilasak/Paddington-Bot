@@ -66,6 +66,9 @@ Important variables:
 - `LLM_API_KEY`: API key for the OpenAI-compatible provider
 - `LLM_BASE_URL`: provider base URL, defaults to OpenAI-compatible `/v1`
 - `LLM_MODEL`: model name used for intent classification and extraction
+- `INTENT_CLASSIFIER_ENABLED`: enable the optional embedding-based intent classifier
+- `INTENT_CLASSIFIER_BASE_URL`: OpenAI-compatible embeddings base URL, for example a local TEI service
+- `INTENT_CLASSIFIER_MODEL`: embedding model name, such as `intfloat/multilingual-e5-small`
 
 ## Run locally with Docker
 
@@ -169,6 +172,12 @@ The backend exposes a provider abstraction:
 
 The initial implementation uses an OpenAI-compatible `chat/completions` endpoint over `httpx`, but the rest of the code depends only on the abstract interface.
 
+The routing stack works in layers:
+
+- rule-based keywords and regex extraction first
+- optional embedding-based intent classification second
+- optional LLM classification and extraction as the final fallback
+
 The LLM:
 
 - never writes to the database
@@ -181,6 +190,25 @@ The LLM:
 ```bash
 pytest
 ```
+
+## Import group members from CSV
+
+After running migrations, you can import a WhatsApp group member export into `users`:
+
+```powershell
+.venv\Scripts\python.exe scripts\import_group_members.py --csv C:\path\members.csv
+```
+
+Optional photo arguments:
+
+```powershell
+.venv\Scripts\python.exe scripts\import_group_members.py `
+  --csv C:\path\members.csv `
+  --photos-dir C:\path\downloaded-photos `
+  --copy-photos-to D:\Apps\Paddington-Bot\output\group-member-photos
+```
+
+Use `--dry-run` to preview the import without committing changes.
 
 ## Future improvements
 

@@ -54,3 +54,17 @@ class CommunityEventRepository:
             )
         )
         return int(result.scalar_one())
+
+    async def get_latest_active_for_user(self, user_id: int) -> CommunityEvent | None:
+        now = datetime.now(timezone.utc)
+        result = await self.session.execute(
+            select(CommunityEvent)
+            .where(
+                CommunityEvent.user_id == user_id,
+                CommunityEvent.status == RecordStatus.ACTIVE,
+                CommunityEvent.event_date >= now,
+            )
+            .order_by(CommunityEvent.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()

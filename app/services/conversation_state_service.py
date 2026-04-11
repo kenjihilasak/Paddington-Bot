@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from redis.asyncio import Redis
@@ -61,10 +61,11 @@ class ConversationStateService:
     ) -> ConversationStatePayload:
         """Persist the current state in Redis and mirror it into PostgreSQL."""
 
+        serializable_draft_data = self._make_json_safe(draft_data)
         payload = ConversationStatePayload(
             current_flow=current_flow,
             current_step=current_step,
-            draft_data=draft_data,
+            draft_data=serializable_draft_data,
             last_user_message=last_user_message,
             updated_at=datetime.now(timezone.utc),
         )
@@ -77,7 +78,7 @@ class ConversationStateService:
             user_id=user_id,
             current_flow=current_flow,
             current_step=current_step,
-            draft_data=draft_data,
+            draft_data=serializable_draft_data,
         )
         await self.session.commit()
         return payload
@@ -88,4 +89,17 @@ class ConversationStateService:
         await self.redis_client.delete(self.build_key(user_id))
         await self.repository.clear(user_id)
         await self.session.commit()
+
+    def _make_json_safe(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._make_json_safe(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._make_json_safe(item) for item in value]
+        if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, datetime):
+            if value.tzinfo is None or value.utcoffset() is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc).isoformat()
+        return value
 

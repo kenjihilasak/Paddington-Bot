@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_session
+from app.intents.base import IntentClassifier
+from app.intents.embedding_classifier import EmbeddingIntentClassifier
 from app.llm.base import LLMProvider
 from app.llm.openai_provider import OpenAICompatibleProvider
 from app.services.conversation_state_service import ConversationStateService
@@ -19,6 +21,7 @@ from app.services.exchange_service import ExchangeService
 from app.services.listing_service import ListingService
 from app.services.message_router import MessageRouter
 from app.services.summary_service import SummaryService
+from app.services.inbound_message_queue_service import InboundMessageQueueService
 from app.services.webhook_service import WebhookService
 from app.services.whatsapp_service import WhatsAppService
 
@@ -57,6 +60,17 @@ async def get_llm_provider(
     if not settings.is_llm_configured:
         return None
     return OpenAICompatibleProvider(settings, http_client)
+
+
+async def get_intent_classifier(
+    settings: Settings = Depends(get_app_settings),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
+) -> IntentClassifier | None:
+    """Return the configured embedding-based intent classifier if available."""
+
+    if not settings.is_intent_classifier_configured:
+        return None
+    return EmbeddingIntentClassifier(settings, http_client)
 
 
 async def get_exchange_service(
@@ -99,6 +113,7 @@ async def get_message_router(
     listing_service: ListingService = Depends(get_listing_service),
     event_service: EventService = Depends(get_event_service),
     summary_service: SummaryService = Depends(get_summary_service),
+    intent_classifier: IntentClassifier | None = Depends(get_intent_classifier),
     llm_provider: LLMProvider | None = Depends(get_llm_provider),
 ) -> MessageRouter:
     return MessageRouter(
@@ -108,6 +123,7 @@ async def get_message_router(
         listing_service=listing_service,
         event_service=event_service,
         summary_service=summary_service,
+        intent_classifier=intent_classifier,
         llm_provider=llm_provider,
     )
 
@@ -122,12 +138,14 @@ async def get_whatsapp_service(
 async def get_webhook_service(
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    redis_client: Redis = Depends(get_redis_client),
     message_router: MessageRouter = Depends(get_message_router),
     whatsapp_service: WhatsAppService = Depends(get_whatsapp_service),
 ) -> WebhookService:
     return WebhookService(
         session=session,
         settings=settings,
+        inbound_message_queue_service=InboundMessageQueueService(redis_client, settings),
         message_router=message_router,
         whatsapp_service=whatsapp_service,
     )

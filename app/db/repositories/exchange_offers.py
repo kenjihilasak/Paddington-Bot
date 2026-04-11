@@ -61,3 +61,41 @@ class ExchangeOfferRepository:
         )
         return int(result.scalar_one())
 
+    async def get_latest_active_for_user(self, user_id: int) -> ExchangeOffer | None:
+        now = datetime.now(timezone.utc)
+        result = await self.session.execute(
+            select(ExchangeOffer)
+            .where(
+                ExchangeOffer.user_id == user_id,
+                ExchangeOffer.status == RecordStatus.ACTIVE,
+                or_(ExchangeOffer.expires_at.is_(None), ExchangeOffer.expires_at >= now),
+            )
+            .order_by(ExchangeOffer.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_active_candidates_by_offer_currencies(
+        self,
+        *,
+        offer_currencies: list[str],
+        exclude_user_id: int,
+        limit: int = 50,
+    ) -> list[ExchangeOffer]:
+        if not offer_currencies:
+            return []
+
+        now = datetime.now(timezone.utc)
+        result = await self.session.execute(
+            select(ExchangeOffer)
+            .where(
+                ExchangeOffer.user_id != exclude_user_id,
+                ExchangeOffer.status == RecordStatus.ACTIVE,
+                or_(ExchangeOffer.expires_at.is_(None), ExchangeOffer.expires_at >= now),
+                ExchangeOffer.offer_currency.in_(offer_currencies),
+            )
+            .order_by(ExchangeOffer.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+

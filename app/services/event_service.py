@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import CommunityEvent, RecordStatus
@@ -56,3 +59,37 @@ class EventService:
             limit=limit,
             offset=offset,
         )
+
+    async def get_latest_user_location(self, user_id: int) -> tuple[datetime, str] | None:
+        """Return the user's most recent event location, if any."""
+
+        result = await self.session.execute(
+            select(CommunityEvent.created_at, CommunityEvent.location)
+            .where(
+                CommunityEvent.user_id == user_id,
+                CommunityEvent.location.is_not(None),
+            )
+            .order_by(CommunityEvent.created_at.desc())
+            .limit(1)
+        )
+        row = result.first()
+        if row is None:
+            return None
+
+        created_at, location = row
+        if location is None:
+            return None
+        return created_at, location
+
+    async def get_latest_active_event_for_user(self, user_id: int) -> CommunityEvent | None:
+        """Return the user's most recent active event."""
+
+        return await self.repository.get_latest_active_for_user(user_id)
+
+    async def update_event_status(self, event: CommunityEvent, status: RecordStatus) -> CommunityEvent:
+        """Persist a new lifecycle status for an event."""
+
+        event.status = status
+        await self.session.commit()
+        await self.session.refresh(event)
+        return event

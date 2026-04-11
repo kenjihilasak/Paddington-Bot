@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -21,6 +21,7 @@ class ExchangeOffer(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     offer_currency: Mapped[str] = mapped_column(String(8), index=True)
     want_currency: Mapped[str] = mapped_column(String(8), index=True)
+    want_currencies: Mapped[list[str]] = mapped_column(JSON, default=list)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     location: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

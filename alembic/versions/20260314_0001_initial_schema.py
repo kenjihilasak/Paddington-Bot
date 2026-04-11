@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "20260314_0001"
@@ -12,11 +13,15 @@ branch_labels = None
 depends_on = None
 
 
-message_direction = sa.Enum("INBOUND", "OUTBOUND", name="messagedirection")
-message_type = sa.Enum("TEXT", "UNSUPPORTED", name="messagetype")
-record_status = sa.Enum("ACTIVE", "INACTIVE", "EXPIRED", "ARCHIVED", name="recordstatus")
-listing_category = sa.Enum("ITEM", "SERVICE", "WANTED", "OTHER", name="listingcategory")
-conversation_flow = sa.Enum(
+message_direction = postgresql.ENUM("INBOUND", "OUTBOUND", name="messagedirection", create_type=False)
+message_type = postgresql.ENUM("TEXT", "UNSUPPORTED", name="messagetype", create_type=False)
+record_status = postgresql.ENUM(
+    "ACTIVE", "INACTIVE", "EXPIRED", "ARCHIVED", name="recordstatus", create_type=False
+)
+listing_category = postgresql.ENUM(
+    "ITEM", "SERVICE", "WANTED", "OTHER", name="listingcategory", create_type=False
+)
+conversation_flow = postgresql.ENUM(
     "IDLE",
     "EXCHANGE_CREATE",
     "EXCHANGE_SEARCH",
@@ -25,6 +30,7 @@ conversation_flow = sa.Enum(
     "EVENT_CREATE",
     "SUMMARY",
     name="conversationflow",
+    create_type=False,
 )
 
 

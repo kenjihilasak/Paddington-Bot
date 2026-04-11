@@ -23,6 +23,8 @@ class RecordStatus(str, Enum):
     """Lifecycle status for stored business records."""
 
     ACTIVE = "active"
+    RESOLVED = "resolved"
+    CANCELLED = "cancelled"
     INACTIVE = "inactive"
     EXPIRED = "expired"
     ARCHIVED = "archived"

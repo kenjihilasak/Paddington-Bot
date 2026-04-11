@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.db.base import Base
 
@@ -17,7 +18,13 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     wa_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    wa_profile_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    group_alias: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    confirmed_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    profile_photo_source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phone_country_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    profile_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -26,6 +33,7 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    display_name = synonym("wa_profile_name")
 
     messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")
     conversation_state = relationship(

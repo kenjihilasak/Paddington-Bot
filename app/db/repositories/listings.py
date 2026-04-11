@@ -63,3 +63,17 @@ class ListingRepository:
         )
         return int(result.scalar_one())
 
+    async def get_latest_active_for_user(self, user_id: int) -> Listing | None:
+        now = datetime.now(timezone.utc)
+        result = await self.session.execute(
+            select(Listing)
+            .where(
+                Listing.user_id == user_id,
+                Listing.status == RecordStatus.ACTIVE,
+                or_(Listing.expires_at.is_(None), Listing.expires_at >= now),
+            )
+            .order_by(Listing.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+

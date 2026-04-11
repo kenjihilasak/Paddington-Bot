@@ -23,10 +23,6 @@ This documentation is intended for internal use while building and evolving the 
 
 ## Assets
 
-Place diagrams and screenshots in [`docs/assets/`](./assets/).
-
-Suggested filename for the main architecture diagram:
+Main architecture diagram:
 
 - `architecture-overview.png`
-
-Once the image is added, reference it from [Architecture](./architecture.md).

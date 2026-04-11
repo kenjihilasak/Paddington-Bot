@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -68,3 +69,37 @@ class ListingService:
             limit=limit,
             offset=offset,
         )
+
+    async def get_latest_user_location(self, user_id: int) -> tuple[datetime, str] | None:
+        """Return the user's most recent listing location, if any."""
+
+        result = await self.session.execute(
+            select(Listing.created_at, Listing.location)
+            .where(
+                Listing.user_id == user_id,
+                Listing.location.is_not(None),
+            )
+            .order_by(Listing.created_at.desc())
+            .limit(1)
+        )
+        row = result.first()
+        if row is None:
+            return None
+
+        created_at, location = row
+        if location is None:
+            return None
+        return created_at, location
+
+    async def get_latest_active_listing_for_user(self, user_id: int) -> Listing | None:
+        """Return the user's most recent active listing."""
+
+        return await self.repository.get_latest_active_for_user(user_id)
+
+    async def update_listing_status(self, listing: Listing, status: RecordStatus) -> Listing:
+        """Persist a new lifecycle status for a listing."""
+
+        listing.status = status
+        await self.session.commit()
+        await self.session.refresh(listing)
+        return listing
