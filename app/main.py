@@ -11,7 +11,10 @@ from redis.asyncio import Redis
 from app.api.routes import events, exchange_offers, health, listings, summary, webhook
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.session import AsyncSessionLocal
+import app.db.models  # noqa: F401
+from app.db.base import Base
+from app.db.session import AsyncSessionLocal, engine
+from app.services.fake_redis import FakeRedis
 from app.services.webhook_task_coordinator import WebhookTaskCoordinator
 
 
@@ -27,8 +30,15 @@ async def lifespan(app: FastAPI):
     created_redis = False
     created_http_client = False
 
+    if settings.auto_create_schema:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+
     if not hasattr(app.state, "redis"):
-        app.state.redis = Redis.from_url(settings.redis_url, decode_responses=False)
+        if settings.use_fake_redis:
+            app.state.redis = FakeRedis()
+        else:
+            app.state.redis = Redis.from_url(settings.redis_url, decode_responses=False)
         created_redis = True
     if not hasattr(app.state, "http_client"):
         app.state.http_client = httpx.AsyncClient()

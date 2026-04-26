@@ -1,0 +1,24 @@
+Start backend + ngrok
+
+Terminal 1: backend
+1. cd /home/pjbd103/Projects/luke-bot
+2. ./scripts/start_local_postgres_apptainer.sh
+3. Open another terminal
+4. cd /home/pjbd103/Projects/luke-bot
+5. ./scripts/migrate_local.sh
+6. ./scripts/start_backend_local.sh
+
+Terminal 2: ngrok
+1. cd /home/pjbd103/Projects/luke-bot
+2. ngrok http 8000
+3. Copy the URL https://...ngrok-free.dev
+4. Use this URL in Meta:
+   https://YOUR-URL.ngrok-free.dev/webhook/meta
+
+Quick checks
+- Backend health: curl http://127.0.0.1:8000/health
+- View processes: pgrep -a -f 'uvicorn|ngrok|postgres'
+
+To stop
+- Backend/ngrok/postgres in their terminal: Ctrl+C
+- If you cannot find the terminal: pkill -f uvicorn ; pkill -f ngrok

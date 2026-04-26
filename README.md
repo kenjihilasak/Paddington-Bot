@@ -86,15 +86,76 @@ The API will be available at `http://localhost:8000`.
 
 ## Run locally without Docker
 
-Create a virtual environment, install dependencies, and run the migration:
+Start PostgreSQL locally with Apptainer:
 
 ```bash
+./scripts/start_local_postgres_apptainer.sh
+```
+
+In another terminal, create a virtual environment, install dependencies, and run the migration:
+
+```bash
+cp .env.example .env
 python -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
+./scripts/migrate_local.sh
+./scripts/start_backend_local.sh
 ```
+
+Use these local development values in `.env`:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/luke_bot
+USE_FAKE_REDIS=true
+AUTO_CREATE_SCHEMA=false
+```
+
+With this setup, PostgreSQL runs locally and Redis stays in memory via `USE_FAKE_REDIS=true`.
+
+## Run PostgreSQL locally with Apptainer
+
+If Docker is unavailable but Apptainer works on your machine, you can run PostgreSQL locally from this repo:
+
+```bash
+./scripts/start_local_postgres_apptainer.sh
+```
+
+This starts PostgreSQL on `localhost:5432` with:
+
+- database: `luke_bot`
+- user: `postgres`
+- password: `postgres`
+
+In another terminal, verify the connection with:
+
+```bash
+./scripts/check_local_postgres_apptainer.sh
+```
+
+## Start the backend locally
+
+After PostgreSQL is running and dependencies are installed:
+
+```bash
+./scripts/migrate_local.sh
+./scripts/start_backend_local.sh
+```
+
+## Expose the local webhook with ngrok
+
+Once the API is running on `http://localhost:8000`, create a public tunnel:
+
+```bash
+ngrok http 8000
+```
+
+Use the HTTPS forwarding URL from ngrok in your Meta webhook configuration:
+
+- Verify URL: `https://<your-ngrok-domain>/webhook/meta`
+- Verify token: the same value as `META_VERIFY_TOKEN`
+
+Meta will send verification requests and incoming WhatsApp webhook events through that public URL to your local FastAPI server.
 
 On Windows PowerShell:
 
