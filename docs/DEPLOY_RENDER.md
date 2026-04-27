@@ -85,7 +85,7 @@ If you later move from the default `onrender.com` URL to your own domain:
 ## Recommended Render settings
 
 - Web service plan: `Starter`
-- Postgres plan: `Starter`
+- Postgres plan: `basic-256mb`
 - Key Value plan: `Starter`
 - Region: keep all services in the same region
 
