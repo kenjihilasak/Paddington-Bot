@@ -44,14 +44,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Paddington Bot Backend"
+    app_name: str = "Luke-bot Backend"
     app_env: str = "development"
     debug: bool = False
     api_prefix: str = "/api"
     business_timezone: str = "Europe/London"
 
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/paddington_bot"
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/luke_bot"
     )
     redis_url: str = "redis://localhost:6379/0"
     use_fake_redis: bool = False

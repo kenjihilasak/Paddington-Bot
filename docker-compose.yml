@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: paddington-bot-app
+    container_name: luke-bot-app
     env_file:
       - .env
     ports:
@@ -15,9 +15,9 @@ services:
 
   db:
     image: postgres:16
-    container_name: paddington-bot-db
+    container_name: luke-bot-db
     environment:
-      POSTGRES_DB: paddington_bot
+      POSTGRES_DB: luke_bot
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -27,7 +27,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: paddington-bot-redis
+    container_name: luke-bot-redis
     ports:
       - "6379:6379"
 

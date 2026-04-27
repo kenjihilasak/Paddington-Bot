@@ -2,7 +2,7 @@
 
 ## Goal
 
-Paddington Bot is a backend MVP for a WhatsApp-based community assistant focused on exchange offers, marketplace listings, community events, and short summaries.
+Luke-bot is a backend MVP for a WhatsApp-based community assistant focused on exchange offers, marketplace listings, community events, and short summaries.
 
 ## Architecture diagram
 

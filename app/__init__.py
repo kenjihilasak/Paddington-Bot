@@ -1,2 +1,1 @@
-"""Application package for the Paddington Bot backend."""
-
+"""Application package for the Luke-bot backend."""

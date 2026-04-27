@@ -1,4 +1,4 @@
-# Paddington Bot Backend
+# Luke-bot Backend
 
 MVP backend for a WhatsApp community assistant bot powered by the official Meta WhatsApp Cloud API. The service is designed for a Leeds community marketplace and utility assistant, with support for currency exchange offers, local sale listings, community events, summaries, and simple conversational state.
 
@@ -266,7 +266,7 @@ Optional photo arguments:
 .venv\Scripts\python.exe scripts\import_group_members.py `
   --csv C:\path\members.csv `
   --photos-dir C:\path\downloaded-photos `
-  --copy-photos-to D:\Apps\Paddington-Bot\output\group-member-photos
+  --copy-photos-to D:\Apps\Luke-Bot\output\group-member-photos
 ```
 
 Use `--dry-run` to preview the import without committing changes.

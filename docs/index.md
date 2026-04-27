@@ -1,4 +1,4 @@
-# Paddington Bot Technical Documentation
+# Luke-bot Technical Documentation
 
 This folder contains internal technical documentation for the backend MVP.
 
