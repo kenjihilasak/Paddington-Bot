@@ -46,7 +46,7 @@ requirements.txt
 
 ## Internal documentation
 
-Technical notes for the backend live in [`docs/`](./docs/index.md).
+Project guides and backend reference docs live in [`docs/`](./docs/index.md).
 
 ## Environment variables
 

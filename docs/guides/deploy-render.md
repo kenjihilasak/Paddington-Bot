@@ -1,6 +1,6 @@
 # Deploy to Render
 
-This repo includes a ready-to-use [render.yaml](../render.yaml) Blueprint for:
+This repo includes a ready-to-use [render.yaml](../../render.yaml) Blueprint for:
 
 - a public FastAPI web service
 - a managed Render Postgres database

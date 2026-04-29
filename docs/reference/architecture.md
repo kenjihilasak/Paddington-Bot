@@ -8,7 +8,7 @@ Luke-bot is a backend MVP for a WhatsApp-based community assistant focused on ex
 
 The static image below is the main system overview for quick reading in GitHub.
 
-![General architecture](./assets/architecture-overview.png)
+![General architecture](../assets/architecture-overview.png)
 
 The Mermaid diagram below focuses on the runtime interaction between the main backend components.
 

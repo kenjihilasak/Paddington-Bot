@@ -1,28 +1,32 @@
-# Luke-bot Technical Documentation
+# Luke Bot Documentation
 
-This folder contains internal technical documentation for the backend MVP.
+This folder is split by purpose:
 
-## Recommended reading order
+- `guides/`: operational steps and runbooks.
+- `reference/`: backend architecture and technical reference.
+- `assets/`: diagrams and images used by the docs.
 
-1. [Architecture](./architecture.md)
-2. [Backend Overview](./backend-overview.md)
-3. [Database](./database.md)
-4. [Webhook Flow](./webhook-flow.md)
-5. [API Reference](./api-reference.md)
-6. [Technical Decisions](./technical-decisions.md)
+## Guides
 
-## Scope
+- [Deploy to Railway](./guides/deploy-railway.md)
+- [Deploy to Render](./guides/deploy-render.md)
+- [Import group members](./guides/import-group-members.md)
+- [Local Docker WhatsApp testing](./guides/local-docker-whatsapp-testing.md)
+- [Local backend with ngrok](./guides/local-ngrok-backend.md)
 
-This documentation is intended for internal use while building and evolving the backend. It focuses on:
+## Reference
 
-- current architecture and responsibilities
-- runtime flow from inbound WhatsApp message to outbound response
-- data model and storage concerns
-- current HTTP API surface
-- key design choices and known limitations
+- [Architecture](./reference/architecture.md)
+- [Backend overview](./reference/backend-overview.md)
+- [Database](./reference/database.md)
+- [Webhook flow](./reference/webhook-flow.md)
+- [API reference](./reference/api-reference.md)
+- [Technical decisions](./reference/technical-decisions.md)
 
-## Assets
+## Recommended Reading
 
-Main architecture diagram:
-
-- `architecture-overview.png`
+1. [Architecture](./reference/architecture.md)
+2. [Backend overview](./reference/backend-overview.md)
+3. [Database](./reference/database.md)
+4. [Webhook flow](./reference/webhook-flow.md)
+5. [Import group members](./guides/import-group-members.md)

@@ -2,7 +2,7 @@
 
 This project can be deployed to Railway directly from GitHub.
 
-The repo now includes [railway.json](../railway.json), which tells Railway to:
+The repo now includes [railway.json](../../railway.json), which tells Railway to:
 
 - build with the existing Dockerfile
 - run `alembic upgrade head` before each deploy
@@ -50,7 +50,7 @@ Use:
 3. Create a new project.
 4. Click `Deploy from GitHub repo`.
 5. Select this repository.
-6. Railway will detect the repo and use [railway.json](../railway.json).
+6. Railway will detect the repo and use [railway.json](../../railway.json).
 7. In the same project, immediately add PostgreSQL.
 8. Set the required environment variables on the web service.
 9. Trigger a redeploy if the first deployment started before variables were ready.
