@@ -4,10 +4,22 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+load_dotenv(REPO_ROOT / ".env", override=True)
+
 from app.db.session import AsyncSessionLocal
-from app.services.user_import_service import UserImportService
+from app.services.user_import_service import (
+    PhotoBucketConfig,
+    S3ProfilePhotoUploader,
+    UserImportService,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,6 +42,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Parse and report changes without committing them.",
     )
+    parser.add_argument(
+        "--no-upload-photos-to-bucket",
+        action="store_true",
+        help="Keep photo_url values as-is instead of uploading them to the configured bucket.",
+    )
     return parser.parse_args()
 
 
@@ -38,6 +55,10 @@ async def main() -> None:
     csv_path = Path(args.csv_path).expanduser().resolve()
     photos_dir = Path(args.photos_dir).expanduser().resolve() if args.photos_dir else None
     copy_photos_to = Path(args.copy_photos_to).expanduser().resolve() if args.copy_photos_to else None
+    upload_photos = not args.no_upload_photos_to_bucket and not args.dry_run
+    photo_uploader = None
+    if upload_photos:
+        photo_uploader = S3ProfilePhotoUploader(PhotoBucketConfig.from_env(env_path=REPO_ROOT / ".env"))
 
     async with AsyncSessionLocal() as session:
         service = UserImportService(session)
@@ -45,12 +66,15 @@ async def main() -> None:
             csv_path=csv_path,
             photos_dir=photos_dir,
             copy_photos_to=copy_photos_to,
+            photo_uploader=photo_uploader,
             dry_run=args.dry_run,
         )
 
     mode = "dry-run" if args.dry_run else "import"
     print(
-        f"{mode} finished: created={summary.created}, updated={summary.updated}, skipped={summary.skipped}"
+        f"{mode} finished: created={summary.created}, updated={summary.updated}, "
+        f"skipped={summary.skipped}, photos_uploaded={summary.photos_uploaded}, "
+        f"photos_failed={summary.photos_failed}"
     )
 
 

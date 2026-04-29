@@ -3,18 +3,25 @@
 from __future__ import annotations
 
 import csv
+import asyncio
+import logging
+import os
 import shutil
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
+import httpx
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from app.db.repositories import UserRepository
 
+
+logger = logging.getLogger(__name__)
 
 COUNTRY_CODE_BY_PHONE_PREFIX = {
     "353": "IE",
@@ -46,6 +53,102 @@ class GroupMemberImportSummary:
     created: int = 0
     updated: int = 0
     skipped: int = 0
+    photos_uploaded: int = 0
+    photos_failed: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class PhotoBucketConfig:
+    """S3-compatible bucket settings for profile photo uploads."""
+
+    bucket: str
+    endpoint_url: str
+    access_key_id: str
+    secret_access_key: str
+    region: str = "auto"
+    object_prefix: str = "profile-photos"
+
+    @classmethod
+    def from_env(
+        cls,
+        *,
+        object_prefix: str = "profile-photos",
+        env_path: Path | None = None,
+    ) -> "PhotoBucketConfig":
+        load_dotenv(env_path)
+        bucket = os.getenv("BUCKET")
+        endpoint_url = os.getenv("ENDPOINT")
+        access_key_id = os.getenv("ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID")
+        secret_access_key = os.getenv("SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY")
+        region = os.getenv("REGION") or os.getenv("AWS_DEFAULT_REGION") or "auto"
+
+        missing = [
+            name
+            for name, value in {
+                "BUCKET": bucket,
+                "ENDPOINT": endpoint_url,
+                "ACCESS_KEY_ID": access_key_id,
+                "SECRET_ACCESS_KEY": secret_access_key,
+            }.items()
+            if not value
+        ]
+        if missing:
+            raise RuntimeError(f"Missing bucket environment variables: {', '.join(missing)}")
+
+        return cls(
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            region=region,
+            object_prefix=object_prefix.strip("/"),
+        )
+
+
+class ProfilePhotoUploader(Protocol):
+    """Upload profile photos and return the stored object key."""
+
+    async def upload_from_url(self, *, wa_id: str, source_url: str) -> str:
+        ...
+
+
+class S3ProfilePhotoUploader:
+    """Download profile photos and upload them to an S3-compatible bucket."""
+
+    def __init__(self, config: PhotoBucketConfig) -> None:
+        self.config = config
+        try:
+            import boto3
+        except ImportError as exc:  # pragma: no cover - depends on local environment
+            raise RuntimeError("boto3 is required for bucket uploads. Run pip install -r requirements.txt.") from exc
+
+        self.s3_client = boto3.client(
+            "s3",
+            endpoint_url=config.endpoint_url,
+            aws_access_key_id=config.access_key_id,
+            aws_secret_access_key=config.secret_access_key,
+            region_name=config.region,
+        )
+
+    async def upload_from_url(self, *, wa_id: str, source_url: str) -> str:
+        object_key = (
+            f"{self.config.object_prefix}/{wa_id}.jpg"
+            if self.config.object_prefix
+            else f"{wa_id}.jpg"
+        )
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as http_client:
+            response = await http_client.get(source_url)
+            response.raise_for_status()
+
+        content_type = response.headers.get("content-type") or "image/jpeg"
+        await asyncio.to_thread(
+            self.s3_client.put_object,
+            Bucket=self.config.bucket,
+            Key=object_key,
+            Body=response.content,
+            ContentType=content_type,
+        )
+        return object_key
 
 
 def normalize_wa_id(raw_value: str) -> str:
@@ -142,6 +245,7 @@ class UserImportService:
         csv_path: Path,
         photos_dir: Path | None = None,
         copy_photos_to: Path | None = None,
+        photo_uploader: ProfilePhotoUploader | None = None,
         dry_run: bool = False,
     ) -> GroupMemberImportSummary:
         """Import a CSV export of WhatsApp group members into users."""
@@ -171,9 +275,20 @@ class UserImportService:
                 if wa_profile_name is not None:
                     user.wa_profile_name = wa_profile_name
 
-                profile_photo_source_url = first_present_value(row, "photo_url", "Foto_URL")
-                if profile_photo_source_url is not None:
-                    user.profile_photo_source_url = profile_photo_source_url
+                raw_photo_url = first_present_value(row, "photo_url", "Foto_URL")
+                if raw_photo_url is not None:
+                    if photo_uploader is None or dry_run:
+                        user.profile_photo_source_url = raw_photo_url
+                    else:
+                        try:
+                            user.profile_photo_source_url = await photo_uploader.upload_from_url(
+                                wa_id=wa_id,
+                                source_url=raw_photo_url,
+                            )
+                            summary.photos_uploaded += 1
+                        except Exception as exc:
+                            logger.warning("Failed to upload profile photo for wa_id=%s: %s", wa_id, exc)
+                            summary.photos_failed += 1
 
                 phone_country_prefix, country_code = infer_phone_country(wa_id)
                 user.phone_country_prefix = phone_country_prefix
@@ -187,7 +302,7 @@ class UserImportService:
                 local_photo_file = resolve_local_photo_file(
                     raw_number=raw_number,
                     wa_id=wa_id,
-                    source_url=profile_photo_source_url,
+                    source_url=raw_photo_url,
                     photos_dir=photos_dir,
                 )
                 if local_photo_file is not None:

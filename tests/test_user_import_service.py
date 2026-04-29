@@ -15,6 +15,15 @@ from app.services.user_import_service import (
 )
 
 
+class FakePhotoUploader:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def upload_from_url(self, *, wa_id: str, source_url: str) -> str:
+        self.calls.append((wa_id, source_url))
+        return f"profile-photos/{wa_id}.jpg"
+
+
 def test_normalize_wa_id_and_country_detection() -> None:
     assert normalize_wa_id("+44 7767 348952") == "447767348952"
     assert infer_phone_country("447767348952") == ("44", "GB")
@@ -99,3 +108,29 @@ async def test_import_group_members_reads_current_csv_columns(session_maker, tmp
         assert user.wa_profile_name == "~ Kenji WA"
         assert user.name == "Kenji H."
         assert user.profile_photo_source_url == "https://example.com/avatar.jpg"
+
+
+@pytest.mark.asyncio
+async def test_import_group_members_uploads_csv_photo_url_to_bucket_object_key(
+    session_maker,
+    tmp_path: Path,
+) -> None:
+    async with session_maker() as session:
+        csv_path = tmp_path / "members.csv"
+        csv_path.write_text(
+            "wa_id,wa_profile_name,photo_url\n"
+            '"447767348952","~ Kenji WA","https://example.com/avatar.jpg"\n',
+            encoding="utf-8",
+        )
+
+        uploader = FakePhotoUploader()
+        service = UserImportService(session)
+        summary = await service.import_group_members(csv_path=csv_path, photo_uploader=uploader)
+
+        user = await service.user_repository.get_by_wa_id("447767348952")
+        assert user is not None
+        assert summary.created == 1
+        assert summary.photos_uploaded == 1
+        assert summary.photos_failed == 0
+        assert uploader.calls == [("447767348952", "https://example.com/avatar.jpg")]
+        assert user.profile_photo_source_url == "profile-photos/447767348952.jpg"
