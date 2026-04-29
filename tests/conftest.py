@@ -117,13 +117,18 @@ def session_maker(tmp_path: Path):
 @pytest.fixture
 def app(session_maker, fake_redis):
     app = create_app()
+    settings = deps.get_app_settings()
+    settings.meta_verify_token = "change-me"
+    settings.meta_access_token = ""
+    settings.meta_phone_number_id = ""
+    settings.llm_api_key = ""
     shared_http_client = httpx.AsyncClient()
     app.state.redis = fake_redis
     app.state.http_client = shared_http_client
     app.state.session_maker = session_maker
     app.state.webhook_task_coordinator = WebhookTaskCoordinator(
         session_factory=session_maker,
-        settings=deps.get_app_settings(),
+        settings=settings,
         redis_client=fake_redis,
         http_client=shared_http_client,
     )

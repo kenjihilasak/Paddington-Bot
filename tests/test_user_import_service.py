@@ -39,7 +39,7 @@ def test_resolve_local_photo_file_uses_source_url_basename(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_import_group_members_updates_profile_snapshot_without_overwriting_confirmed_name(
+async def test_import_group_members_updates_profile_snapshot_without_overwriting_name(
     session_maker,
     tmp_path: Path,
 ) -> None:
@@ -47,7 +47,7 @@ async def test_import_group_members_updates_profile_snapshot_without_overwriting
         user = User(
             wa_id="447767348952",
             wa_profile_name="Kenji WA",
-            confirmed_name="Kenji H.",
+            name="Kenji H.",
         )
         session.add(user)
         await session.commit()
@@ -66,9 +66,36 @@ async def test_import_group_members_updates_profile_snapshot_without_overwriting
         assert summary.created == 0
         assert summary.updated == 1
         assert user.wa_profile_name == "Kenji WA"
-        assert user.confirmed_name == "Kenji H."
-        assert user.group_alias == "~kenji"
+        assert user.name == "Kenji H."
         assert user.profile_photo_source_url == "https://example.com/avatar.jpg"
         assert user.phone_country_prefix == "44"
         assert user.country_code == "GB"
         assert user.profile_metadata == {"saved_contact_name": "Kenji Saved"}
+
+
+@pytest.mark.asyncio
+async def test_import_group_members_reads_current_csv_columns(session_maker, tmp_path: Path) -> None:
+    async with session_maker() as session:
+        user = User(
+            wa_id="447767348952",
+            name="Kenji H.",
+        )
+        session.add(user)
+        await session.commit()
+
+        csv_path = tmp_path / "members.csv"
+        csv_path.write_text(
+            "wa_id,wa_profile_name,photo_url\n"
+            '"447767348952","~ Kenji WA","https://example.com/avatar.jpg"\n',
+            encoding="utf-8",
+        )
+
+        service = UserImportService(session)
+        summary = await service.import_group_members(csv_path=csv_path)
+        await session.refresh(user)
+
+        assert summary.created == 0
+        assert summary.updated == 1
+        assert user.wa_profile_name == "~ Kenji WA"
+        assert user.name == "Kenji H."
+        assert user.profile_photo_source_url == "https://example.com/avatar.jpg"

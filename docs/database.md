@@ -14,7 +14,8 @@ Key fields:
 
 - `id`
 - `wa_id`
-- `display_name`
+- `wa_profile_name`
+- `name`
 - `created_at`
 - `updated_at`
 

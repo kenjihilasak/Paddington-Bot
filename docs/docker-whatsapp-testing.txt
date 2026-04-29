@@ -1,0 +1,204 @@
+RESUMEN RAPIDO PARA PROBAR PADDINGTON-BOT CON DOCKER
+
+1. Objetivo
+
+Este proyecto puede probarse en local con Docker levantando:
+- app
+- db
+- redis
+
+La app expone:
+- http://localhost:8000
+- webhook de Meta en /webhook/meta
+
+Para que Meta pueda enviar mensajes al backend local, necesitas exponer el puerto 8000 con ngrok o un tunel parecido.
+
+
+2. Preparacion inicial
+
+Antes de arrancar:
+- Docker Desktop debe estar encendido y no en pausa
+- debe existir el archivo .env
+
+Si aun no lo tienes:
+
+PowerShell
+Copy-Item .env.example .env
+
+Variables importantes en .env:
+- DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/paddington_bot
+- REDIS_URL=redis://redis:6379/0
+- META_VERIFY_TOKEN=elige-un-token-que-tu-recuerdes
+- META_ACCESS_TOKEN=token de WhatsApp Cloud API
+- META_PHONE_NUMBER_ID=id del numero de WhatsApp que usaras
+
+Nota:
+- si faltan META_ACCESS_TOKEN o META_PHONE_NUMBER_ID, el backend procesa mensajes pero no podra enviar respuestas reales por Meta
+- para pruebas del bot con WhatsApp real, esos 2 valores deben estar bien puestos
+
+
+3. Arrancar con Docker
+
+En PowerShell, desde la raiz del repo:
+
+docker compose up --build -d
+
+Despues ejecuta la migracion:
+
+docker compose exec app alembic upgrade head
+
+Si quieres revisar que todo esta arriba:
+
+docker compose ps
+docker compose logs -f app
+
+
+4. Comprobar que la API vive
+
+Abre en navegador:
+
+http://localhost:8000/health
+
+Si responde correctamente, la app esta levantada.
+
+
+5. Exponer local a Meta
+
+En otra terminal:
+
+ngrok http 8000
+& "C:\Users\kenjihilasak\AppData\Local\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe" http 8000
+
+
+Ngrok te dara una URL publica, por ejemplo:
+
+https://xxxx-xxxx-xxxx.ngrok-free.app
+
+En Meta debes configurar:
+- Verify URL: https://TU-URL-NGROK/webhook/meta
+- Verify token: el mismo valor que pusiste en META_VERIFY_TOKEN
+
+Cuando Meta verifique el webhook, este backend respondera en:
+- GET /webhook/meta
+
+
+6. Primera prueba: tu numero personal con el numero de prueba que provee Meta
+
+Usa esta opcion si primero quieres validar todo con el numero sandbox o de prueba que ya tenias en Meta.
+
+En .env deja:
+- META_ACCESS_TOKEN = token del numero de prueba de Meta
+- META_PHONE_NUMBER_ID = phone number id del numero de prueba de Meta
+- META_VERIFY_TOKEN = el mismo que pondras en la configuracion del webhook
+
+Flujo:
+- levantas Docker
+- ejecutas migraciones
+- expones puerto 8000 con ngrok
+- pegas la URL publica en la app de Meta
+- envias un WhatsApp desde tu numero personal al numero de prueba de Meta
+
+Resultado esperado:
+- Meta envia el webhook a tu URL publica
+- tu backend procesa el mensaje
+- si las credenciales de Meta estan bien, el bot responde por WhatsApp desde el numero de prueba
+
+
+7. Segunda prueba: cambiar al numero nuevo que ya tienes
+
+Cuando quieras dejar de usar el numero de prueba y usar tu numero nuevo, normalmente cambian al menos estos datos:
+- META_PHONE_NUMBER_ID
+- META_ACCESS_TOKEN
+
+Actualiza .env con los valores del numero nuevo.
+
+Despues reinicia la app para que relea el .env:
+
+docker compose down
+docker compose up --build -d
+
+No hace falta volver a migrar si la base de datos no cambio, aunque puedes correr otra vez sin problema:
+
+docker compose exec app alembic upgrade head
+
+Luego revisa en Meta que:
+- el webhook sigue apuntando a https://TU-URL-NGROK/webhook/meta
+- el verify token sigue coincidiendo con META_VERIFY_TOKEN
+- el numero nuevo esta correctamente asociado en WhatsApp Cloud API
+
+Despues ya pruebas escribiendo al numero nuevo.
+
+
+8. Cuando usar el numero de prueba y cuando el nuevo
+
+Numero de prueba de Meta:
+- sirve para validar rapido el flujo end-to-end
+- ideal para la primera comprobacion
+
+Numero nuevo:
+- sirve para la configuracion final real
+- requiere que uses su phone number id y su access token correctos
+
+
+9. Secuencia recomendada
+
+Primero:
+- probar en local con Docker
+- exponer con ngrok
+- usar tu numero personal para escribir al numero de prueba de Meta
+
+Despues:
+- cambiar .env al numero nuevo
+- reiniciar contenedores
+- volver a probar envio y recepcion
+
+
+10. Comandos que vas a usar casi siempre
+
+Arrancar:
+docker compose up --build -d
+
+Migraciones:
+docker compose exec app alembic upgrade head
+
+Logs:
+docker compose logs -f app
+
+Parar:
+docker compose down
+
+Ngrok:
+ngrok http 8000
+
+
+11. Errores tipicos
+
+"Docker Desktop is manually paused"
+- Docker Desktop esta en pausa; hay que reanudarlo
+
+"env file .env not found"
+- falta crear .env a partir de .env.example
+
+Meta no verifica el webhook
+- la URL publica no apunta a /webhook/meta
+- META_VERIFY_TOKEN no coincide con el token configurado en Meta
+
+El bot recibe pero no responde por WhatsApp
+- META_ACCESS_TOKEN o META_PHONE_NUMBER_ID no son correctos
+
+
+12. Resumen corto
+
+Para la primera prueba:
+- configura .env con el numero de prueba de Meta
+- docker compose up --build -d
+- docker compose exec app alembic upgrade head
+- ngrok http 8000
+- conecta el webhook en Meta
+- escribe desde tu numero personal al numero de prueba
+
+Para pasar al numero nuevo:
+- cambia META_ACCESS_TOKEN y META_PHONE_NUMBER_ID en .env
+- docker compose down
+- docker compose up --build -d
+- prueba otra vez con el numero nuevo

@@ -19,8 +19,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     wa_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     wa_profile_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    group_alias: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    confirmed_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     profile_photo_source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone_country_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
@@ -46,4 +45,8 @@ class User(Base):
     community_events = relationship(
         "CommunityEvent", back_populates="user", cascade="all, delete-orphan"
     )
+
+    @property
+    def preferred_name(self) -> str | None:
+        return self.name or self.wa_profile_name
 

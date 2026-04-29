@@ -63,6 +63,16 @@ def clean_optional_text(raw_value: str | None) -> str | None:
     return normalized or None
 
 
+def first_present_value(row: dict[str, str], *field_names: str) -> str | None:
+    """Return the first non-empty CSV value from any supported column name."""
+
+    for field_name in field_names:
+        value = clean_optional_text(row.get(field_name))
+        if value is not None:
+            return value
+    return None
+
+
 def infer_phone_country(wa_id: str) -> tuple[str | None, str | None]:
     """Infer the phone prefix and ISO country code for known community prefixes."""
 
@@ -143,7 +153,7 @@ class UserImportService:
         with csv_path.open("r", encoding="utf-8-sig", newline="") as file_handle:
             reader = csv.DictReader(file_handle)
             for row in reader:
-                raw_number = row.get("Numero") or ""
+                raw_number = first_present_value(row, "wa_id", "Numero") or ""
                 wa_id = normalize_wa_id(raw_number)
                 if not wa_id:
                     summary.skipped += 1
@@ -157,11 +167,11 @@ class UserImportService:
                 else:
                     summary.updated += 1
 
-                group_alias = clean_optional_text(row.get("Alias_Grupo"))
-                if group_alias is not None:
-                    user.group_alias = group_alias
+                wa_profile_name = first_present_value(row, "wa_profile_name")
+                if wa_profile_name is not None:
+                    user.wa_profile_name = wa_profile_name
 
-                profile_photo_source_url = clean_optional_text(row.get("Foto_URL"))
+                profile_photo_source_url = first_present_value(row, "photo_url", "Foto_URL")
                 if profile_photo_source_url is not None:
                     user.profile_photo_source_url = profile_photo_source_url
 
@@ -170,7 +180,7 @@ class UserImportService:
                 user.country_code = country_code
 
                 metadata = dict(user.profile_metadata or {})
-                saved_contact_name = clean_optional_text(row.get("Nombre_Guardado"))
+                saved_contact_name = first_present_value(row, "Nombre_Guardado")
                 if saved_contact_name is not None:
                     metadata["saved_contact_name"] = saved_contact_name
 
