@@ -16,3 +16,5 @@ build/
 alembic/__pycache__/
 test-results/
 *.db
+.postgres-data/
+.postgres-run/
